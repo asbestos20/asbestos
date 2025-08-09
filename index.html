@@ -6,7 +6,21 @@
     <link type="text/css" rel="stylesheet" href="stylesheet.css">
 </head>
 <body>
-    <canvas id="canvas"></canvas>
-    <script src="main.js?5"></script>
+    <div id="container">
+        <div id="panel">
+            <h1>2D IBR</h1>
+            <button id="left">&#8592;</button>
+            <button id="right">&#8594;</button>
+            <button id="go">GO</button>
+            <p>Select a track with the buttons above. Refresh to change tracks.</p>
+            <p>I think times are consistent across different devices, but I can't guarantee it. This is just a pet project; don't take the times too competitively.</p>
+            <p>You are a point mass: your boat has no hitbox, and collisions are based on the black dot at the center of your boat.</p>
+            <p>Appleseed is a real IBR track on frosthex.com</p>
+            <p>All code written from scratch, no "vibe coding" here!</p>
+        </div>
+        <canvas id="canvas"></canvas>
+    </div>
+    <script src="trackStrings.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
