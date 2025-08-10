@@ -1,4 +1,4 @@
-//canvas should be square and take up as much space as possible. Will resize when refreshed.
+//dom stuff
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 700;
@@ -7,16 +7,16 @@ const btnLeft = document.getElementById("left");
 const btnRight = document.getElementById("right");
 const btnGo = document.getElementById("go");
 
-let fpsInterval, now, then, elapsed, fpsDisplay; //variables for animation loop
+let fpsInterval, now, then, elapsed; //variables for animation loop
 const keys = []; //holds all current keypresses
 let zoom = 0.25;
 const trackImg = new Image();
 //data:image/png;base64,
-const trackWidth = 3000;
+const trackWidth = 3000; //ALL tracks must be 3000x3000 px!!!
 let boatCam = true;
 let collisionMap = [];
 let trackData;
-let iceFric = 0.997;
+let iceFric = 0.997; //properties of ice vs "off road"
 let iceAngFric = 0.99;
 let grassFric = 0.9;
 let grassAngFric = 0.9;
@@ -29,10 +29,12 @@ let lastTime = null;
 let tracks = [];
 let currentTrack;
 let trackIndex = 0;
+let particles = []; // boat trail particles
+let particleRate = 0;
 
 //if (localStorage.getItem("time-killer")) localStorage.clear();
 
-class Track {
+class Track { //easily add more tracks and store their records in localStorage
     constructor(name, x, y, angle, cpCount, source, image) {
         this.name = name;
         this.x = x;
@@ -53,12 +55,12 @@ function loadTracks() {
 }
 loadTracks();
 
-function selectTrack() {
+function selectTrack() { //this triggers "onload" below when source is set
     currentTrack = tracks[trackIndex];
     trackImg.src = "data:image/png;base64," + currentTrack.source;
 }
 
-trackImg.onload = () => {
+trackImg.onload = () => { //load track image in an invisible canvas and get the image data. Loaded as base64 string to avoid CORS
     const offCanvas = document.createElement("canvas");
     offCanvas.width = trackWidth;
     offCanvas.height = trackWidth;
@@ -69,7 +71,7 @@ trackImg.onload = () => {
     generateCollisionMap();
 }
 
-function generateCollisionMap() {
+function generateCollisionMap() { //get 2D list of terrain types based on rgb values of the track data
     for (let y = 0; y < trackWidth; y++) {
         let row = [];
         for (let x = 0; x < trackWidth; x++) {
@@ -123,7 +125,7 @@ class Boat {
         //change angular velocity
         if (keys["KeyA"]) (this.angVel >= -this.maxAngVel) ? this.angVel -= this.angAcc : this.angVel = -this.maxAngVel;
         if (keys["KeyD"]) (this.angVel <= this.maxAngVel) ? this.angVel += this.angAcc : this.angVel = this.maxAngVel;
-        if (Math.abs(this.angVel) < Math.PI / 2000) this.angVel = 0; else this.angVel *= this.angFric;
+        if (Math.abs(this.angVel) < Math.PI / 2000) this.angVel = 0; else this.angVel *= this.angFric; //angular friction
         //change translational velocity
         if (keys["KeyW"]) {
             this.xVel += this.acc * Math.cos(this.angle);
@@ -134,7 +136,7 @@ class Boat {
                 this.yVel *= this.maxSpeed / speed;
             }
         }
-        let speed = Math.sqrt(this.xVel * this.xVel + this.yVel * this.yVel);
+        let speed = Math.sqrt(this.xVel * this.xVel + this.yVel * this.yVel); //translational friction
         if (speed < 0.01) {
             this.xVel = 0;
             this.yVel = 0;
@@ -153,7 +155,7 @@ class Boat {
 
         //console.log(this.xPos + ", " + this.yPos);
 
-        //update friction based on collisionMap. Treats boat as point-mass, not a rectangle. Marked with dot on screen.
+        //update friction properties based on collisionMap. Treats boat as point-mass, not a rectangle. Marked with dot on screen.
         if (collisionMap[Math.floor(this.yPos)][Math.floor(this.xPos)] == 0) {
             this.fric = grassFric;
             this.angFric = grassAngFric;
@@ -169,21 +171,21 @@ class Boat {
                     newCp = false;
                 }
             }
-            if (newCp) {
+            if (newCp) { //add newly reached checkpoint, including the current time
                 checkpoints.push(new Checkpoint(Math.floor(this.xPos), Math.floor(this.yPos), Date.now() - startTime));
             }
         }
-        //check for finish line, end lap is found
+        //check for finish line, must have all checkpoints completed
         if (collisionMap[Math.floor(this.yPos)][Math.floor(this.xPos)] == 2 && checkpoints.length == currentTrack.cpCount) {
             currentTime = Date.now();
-            if (currentTime - startTime < currentTrack.bestTime || currentTrack.bestTime == null) {
+            if (currentTime - startTime < currentTrack.bestTime || currentTrack.bestTime == null) { //store best time
                 currentTrack.bestTime = currentTime - startTime;
                 localStorage.setItem(currentTrack.name + "-bestTime", currentTrack.bestTime);
                 currentTrack.bestCp = [];
                 for (let i = 0; i < checkpoints.length; i++) {
                     currentTrack.bestCp.push(checkpoints[i].time);
                 }
-                localStorage.setItem(currentTrack.name + "-bestCp", JSON.stringify(currentTrack.bestCp));
+                localStorage.setItem(currentTrack.name + "-bestCp", JSON.stringify(currentTrack.bestCp)); //store best checkpoints as string
             }
             lastTime = currentTime - startTime;
             prepareLap();
@@ -192,7 +194,7 @@ class Boat {
     draw() { //drawing a rotated boat involves rotating and restoring the entire canvas
         ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 1.2);
-        if (boatCam) {
+        if (boatCam) { //rotate or lock based on camera choice
             let speedAngle = Math.atan2(this.yVel, this.xVel);
             if (Math.sqrt(this.xVel * this.xVel + this.yVel * this.yVel) < 0.1) ctx.rotate(Math.PI * 3 / 2);
             else ctx.rotate(Math.PI * 3 /2 + this.angle - speedAngle);
@@ -208,20 +210,51 @@ class Boat {
 }
 let boat;
 
+class Particle { // particles that become transparent and delete and KIND OF stick to the track where they should be
+    constructor() {
+        this.x = boat.xPos;
+        this.y = boat.yPos;
+        this.size = 5;
+        this.alpha = 1;
+        this.decay = 0.02;
+        this.hue = Math.round((Math.random() * 50));
+    }
+    draw() {
+        ctx.fillStyle = "hsla(" + this.hue + ", 100%, 50%, " + this.alpha + ")";
+        ctx.beginPath();
+        ctx.arc(this.x - boat.xPos, this.y - boat.yPos, this.size, 0, Math.PI * 2); //shouldn't drift, but not too noticeable
+        ctx.fill();
+    }
+}
+
+function handleParticles() { //update particle decay and draw them
+    for (let i = 0; i < particles.length; i++) {
+        let p = particles[i];
+        if (p.alpha > p.decay) p.alpha -= p.decay;
+        else {
+            particles.splice(i, 1);
+            i--;
+        }
+        p.draw();
+
+    }
+}
+
 function camera() {
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 1.2);
-    if (boatCam) {
+    if (boatCam) { //gonna kill myself over this
         let speedAngle = Math.atan2(boat.yVel, boat.xVel);
         if (Math.sqrt(boat.xVel * boat.xVel + boat.yVel * boat.yVel) < 0.1) speedAngle = boat.angle;
         ctx.rotate(-speedAngle + Math.PI * 3 /2);
     } else ctx.rotate(Math.PI * 3 / 2 - boat.angle);
     ctx.drawImage(trackImg, boat.xPos - zoom * trackWidth / 2, boat.yPos - zoom / 2 * trackWidth, zoom * trackWidth, zoom * trackWidth, -canvas.width, -canvas.height, canvas.width*2, canvas.height*2);
+    handleParticles();
     ctx.restore();
 }
 
 function overlays() {
-    //camera view
+    //camera view and reset info
     ctx.fillStyle = "black";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
@@ -243,6 +276,7 @@ function overlays() {
     }
 
     //current timer and checkpoint delta
+    //sig figs reduced because of random uncertainty
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     ctx.font = "20px Verdana";
@@ -286,7 +320,7 @@ function overlays() {
     }
 }
 
-function drawMenu() {
+function drawMenu() { //track selection name and image
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "black";
     ctx.font = "50px Verdana";
@@ -297,7 +331,7 @@ function drawMenu() {
     ctx.drawImage(tracks[trackIndex].image, 0, 0, trackWidth, trackWidth, 100, 100, canvas.width - 200, canvas.height - 200);
 }
 
-function prepareLap() {
+function prepareLap() { //reset boat physics, time and checkpoints, and trigger start
     state = "hold";
     boat.xPos = currentTrack.x;
     boat.yPos = currentTrack.y;
@@ -314,7 +348,7 @@ function prepareLap() {
     }, 1000);
 }
 
-function startLap() {
+function startLap() { //start timer, resets physics again to prevent spamming R from saving time
     state = "drive";
     startTime = Date.now();
     boat.xPos = currentTrack.x;
@@ -337,19 +371,19 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("keyup", (e) => {
     keys[e.code] = false;
 });
-window.addEventListener("keypress", (e) => { // toggle camera view
+window.addEventListener("keypress", (e) => { // toggle camera view, reset lap
     if (e.code == "KeyB" && state != "select") boatCam = !boatCam;
     if (e.code == "KeyR" && state == "drive") prepareLap();
 });
-btnLeft.addEventListener("click", () => {
+btnLeft.addEventListener("click", () => { //select prior track, wrap to other end of list
     if (trackIndex > 0) trackIndex--;
     else trackIndex = tracks.length - 1;
 })
-btnRight.addEventListener("click", () => {
+btnRight.addEventListener("click", () => { //select next track, wrap to other end of list
     if (trackIndex < tracks.length - 1) trackIndex++;
     else trackIndex = 0;
 })
-btnGo.addEventListener("click", () => {
+btnGo.addEventListener("click", () => { //select current track
     if (state == "select") {
         selectTrack();
         boat = new Boat();
@@ -358,19 +392,24 @@ btnGo.addEventListener("click", () => {
     }
 });
 
-function animate() { //animate at the same fps regardless of computer performance
+function animate() { //animate at the same fps regardless of computer performance (I hope)
     requestAnimationFrame(animate);
     now = Date.now();
     elapsed = now - then;
     if (elapsed > fpsInterval) {
         then = now - (elapsed % fpsInterval);
-        fpsDisplay = Math.round(1000 / elapsed);
 
         //animation code
         if (state != "select") {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             camera();
             if (state == "drive") boat.update();
+            
+            if (particleRate == 7) { // particles behind boat. Higher number -> less particles
+                particleRate = 0;
+                particles.push(new Particle());
+            } else particleRate++;
+
             boat.draw();
             overlays();
         } else drawMenu();
