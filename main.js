@@ -52,6 +52,8 @@ class Track { //easily add more tracks and store their records in localStorage
 function loadTracks() {
     tracks.push(new Track("Meadow Circuit", 429, 1232, Math.PI * 3 / 2, 10, meadowCircuit, "meadow-circuit.png"));
     tracks.push(new Track("Appleseed", 1218, 530, 0, 11, appleseed, "appleseed.png"));
+    tracks.push(new Track("Flat Bee Freeway", 2554, 1633, Math.PI * 3 / 2, 11, flatBeeFreeway, "flat-bee-freeway.png"));
+    tracks.push(new Track("Cosmic Filament", 663, 2500, Math.PI * 3 / 2, 14, cosmicFilament, "cosmic-filament.png"));
 }
 loadTracks();
 
@@ -86,10 +88,12 @@ function generateCollisionMap() { //get 2D list of terrain types based on rgb va
                 row.push(2);
             } else if (r <= 5 && g >= 126 && g <= 137 && b >= 210 && b <= 220) { //checkpoint
                 row.push(3);
+            } else if (r < 5 && g < 5 && b < 5) { //void (reset)
+                row.push(4);
             } else { // grass
                 row.push(0);
-            
             }
+                
         }
         collisionMap.push(row);
     }
@@ -190,6 +194,10 @@ class Boat {
             lastTime = currentTime - startTime;
             prepareLap();
         }
+        //if touching void, immediately reset lap
+        if (collisionMap[Math.floor(this.yPos)][Math.floor(this.xPos)] == 4) {
+            prepareLap();
+        }
     }
     draw() { //drawing a rotated boat involves rotating and restoring the entire canvas
         ctx.save();
@@ -255,12 +263,14 @@ function camera() {
 
 function overlays() {
     //camera view and reset info
+    ctx.fillStyle = "rgba(255, 255, 255, 0.47)";
+    ctx.fillRect(5, 5, 212, 55);
     ctx.fillStyle = "black";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.font = "20px Verdana";
-    ctx.fillText("View (B): " + ((boatCam) ? "Boat Cam" : "Vanilla Cam"), 5, 5);
-    ctx.fillText("Press (R) to Reset", 5, 30);
+    ctx.fillText("View (B): " + ((boatCam) ? "Boat Cam" : "Vanilla Cam"), 10, 10);
+    ctx.fillText("Press (R) to Reset", 10, 35);
 
     //start text
     if (startText == 1) {
@@ -301,6 +311,8 @@ function overlays() {
         }
     }
     //last and best times
+    ctx.fillStyle = "rgba(255, 255, 255, 0.47)";
+    ctx.fillRect(canvas.width - 160, 5, 153, 55);
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillStyle = "black";
