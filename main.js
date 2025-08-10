@@ -9,7 +9,7 @@ const btnGo = document.getElementById("go");
 
 let fpsInterval, now, then, elapsed; //variables for animation loop
 const keys = []; //holds all current keypresses
-let zoom = 0.25;
+let zoom = 0.375;
 const trackImg = new Image();
 //data:image/png;base64,
 const trackWidth = 3000; //ALL tracks must be 3000x3000 px!!!
@@ -110,8 +110,8 @@ class Checkpoint {
 
 class Boat {
     constructor() {
-        this.width = 40;
-        this.height = 30;
+        this.width = 33;
+        this.height = 25;
         this.angle = currentTrack.angle;
         this.angVel = 0;
         this.angAcc = Math.PI / 1300;
