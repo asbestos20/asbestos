@@ -211,7 +211,10 @@ class Boat {
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
         ctx.beginPath();
         ctx.fillStyle = "rgba(72, 39, 0, 1)";
-        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.moveTo(-3, -3);
+        ctx.lineTo(3, 0);
+        ctx.lineTo(-3, 3);
+        ctx.closePath();
         ctx.fill();
         ctx.restore();
     }
