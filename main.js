@@ -71,6 +71,7 @@ trackImg.onload = () => { //load track image in an invisible canvas and get the 
     offCtx.drawImage(trackImg, 0, 0);
     trackData = offCtx.getImageData(0, 0, trackWidth, trackWidth);
     generateCollisionMap();
+    console.log("loaded collision map");
 }
 
 function generateCollisionMap() { //get 2D list of terrain types based on rgb values of the track data
@@ -88,7 +89,7 @@ function generateCollisionMap() { //get 2D list of terrain types based on rgb va
                 row.push(2);
             } else if (r <= 5 && g >= 126 && g <= 137 && b >= 210 && b <= 220) { //checkpoint
                 row.push(3);
-            } else if (r < 5 && g < 5 && b < 5) { //void (reset)
+            } else if (r < 10 && g < 10 && b < 10) { //void (reset)
                 row.push(4);
             } else { // grass
                 row.push(0);
@@ -254,7 +255,7 @@ function handleParticles() { //update particle decay and draw them
 function camera() {
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 1.2);
-    if (boatCam) { //gonna kill myself over this
+    if (boatCam) {
         let speedAngle = Math.atan2(boat.yVel, boat.xVel);
         if (Math.sqrt(boat.xVel * boat.xVel + boat.yVel * boat.yVel) < 0.1) speedAngle = boat.angle;
         ctx.rotate(-speedAngle + Math.PI * 3 /2);
@@ -404,6 +405,14 @@ btnGo.addEventListener("click", () => { //select current track
         boat = new Boat();
         state = "hold";
         prepareLap();
+        btnGo.innerText = "Back";
+        console.log(trackIndex);
+    } else {
+        state = "select";
+        btnGo.innerText = "GO";
+        collisionMap = [];
+        lastTime = null;
+        checkpoints = [];
     }
 });
 
