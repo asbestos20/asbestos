@@ -31,7 +31,6 @@ button:hover {
 #canvas {
     background-color: rgb(2, 128, 0);
     grid-column: 2;
-    width: 45vw;
-    height: auto;
-    display: block;
+    height: 100vh;
+    width: auto;
 }
